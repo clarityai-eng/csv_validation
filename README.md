@@ -181,12 +181,12 @@ columns:
 What you will see in the summary:
 - Always shows the number of duplicate key groups found.
 - If there are more than 100 duplicate groups, only the first 100 are displayed as a sample (with their occurrence counts), and the total number is indicated.
-- If no duplicates are found, it reports: "Duplicates found: 0".
+- If no duplicates are found, it reports: "No duplicates found".
 
 Sample output (composite key):
 
 ```
-UNIQUE KEY: column(s): ["isin", "date", "score_provider"]
+UNIQUE KEY: column(s): isin, date, score_provider
 
 DUPLICATED KEYS (groups found: 134)
 --------------------------------------------------
@@ -201,7 +201,7 @@ If none:
 ```
 UNIQUE KEYS CHECK
 --------------------------------------------------
-  - No Duplicates found
+  - No duplicates found
 ```
 
 Performance note: Duplicate detection stores only the unique keys on disk and keeps a tiny in-memory summary used for printing the report. This allows validating huge datasets with minimal RAM usage.
@@ -230,7 +230,7 @@ validator.set_decimal_separator(",")  # Use comma
 The library provides detailed validation reports through Python's logging system. When a validation fails, you'll get information about:
 - Which columns failed validation
 - What type of validation failed
-- Sample of invalid values
+- Sample of invalid values (including row numbers)
 - Number of rows that failed each validation
 
 ### Example of validation report
@@ -244,27 +244,27 @@ Rows: 232230 | Columns: 5
 CORRECT COLUMNS: 3/5
 --------------------------------------------------
   - County: [✔] OK
-      ✔ - RegularExpression { expression: "^.*$", alias: "regex" }
+      ✔ - regex: '^.*$'
   - City: [✔] OK
-      ✔ - RegularExpression { expression: "^.*$", alias: "regex" }
+      ✔ - regex: '^.*$'
   - Model Year: [✔] OK
-      ✔ - RegularExpression { expression: "^[0-9]+$", alias: "regex" }
-      ✔ - Min(1999.0)
-      ✔ - Max(2025.78)
+      ✔ - regex: '^[0-9]+$'
+      ✔ - min: 1999
+      ✔ - max: 2025.78
 
 WRONG COLUMNS: 2/5
 --------------------------------------------------
   - State: [✖] FAIL
-      ✖ - Values(["WA", "OR", "NY", "DC", "CA", "TX", "FL", "OK", "MO", "KS", "VA", "MA", "MO", "NC", "IL", "AL", "WY", "CO", "PA", "WI", "MD", "NV", "AZ"])
-          "Wrong Rows: 93 | Sample: 'GA','NJ','CT','NJ','CT','CT','CT','NE','CT','NH'"
+      ✖ - values: 'WA', 'OR', 'NY', 'DC', 'CA', 'TX', 'FL', 'OK', 'MO', 'KS', 'VA', 'MA', 'MO', 'NC', 'IL', 'AL', 'WY', 'CO', 'PA', 'WI', 'MD', 'NV', 'AZ'
+          "Wrong Rows: 93 | Sample: [row 12: 'GA'], [row 15: 'NJ'], [row 22: 'CT'], [row 23: 'NJ'], [row 24: 'CT']"
   - Postal Code: [✖] FAIL
-      ✔ - RegularExpression { expression: "^$|^-?\\d+$", alias: "integer" }
-      ✖ - RegularExpression { expression: "^.+$", alias: "non_empty" }
-          "Wrong Rows: 4 | Sample: '','','',''"
+      ✔ - integer
+      ✖ - non_empty
+          "Wrong Rows: 4 | Sample: [row 45: ''], [row 123: ''], [row 456: ''], [row 789: '']"
 
 VALIDATION RESULT
 --------------------------------------------------
-[✖] FAIL: File DOESN'T match all validations
+[✖] FAIL: File /test.csv DOESN'T match all validations
 ```
 
 ## Development
