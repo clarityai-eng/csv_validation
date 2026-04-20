@@ -336,7 +336,7 @@ fn validation_for_non_empty() -> Validation {
 }
 
 fn regex_for_non_empty() -> String {
-    String::from("^.+$")
+    String::from("(?s)^.+$")
 }
 
 fn validate_column_names(reader: &mut Reader<Box<dyn Read>>, validations: &Vec<ColumnValidations>) -> PyResult<bool> {
@@ -921,6 +921,27 @@ mod tests {
         let validator = CSVValidator::from_string(&definition_with_non_empty_column).unwrap();
         // Validation is not OK as the second column contains empty values
         assert!(!validator.validate("test/empty_values.csv").unwrap());
+    }
+
+    #[test]
+    fn test_non_empty_with_multiline_value() {
+        use std::fs;
+        let definition = String::from("
+            columns:
+              - name: ColumnA
+                extra: non_empty
+        ");
+
+        let path_of_file_to_validate = "test/test_multiline_non_empty.csv";
+        let file_content = "ColumnA\n\"line1\nline2\"";
+        fs::write(path_of_file_to_validate, file_content).unwrap();
+
+        let validator = CSVValidator::from_string(&definition).unwrap();
+        let result = validator.validate(path_of_file_to_validate).unwrap();
+
+        fs::remove_file(path_of_file_to_validate).unwrap();
+
+        assert!(result, "non_empty validation failed for multiline value");
     }
 
     #[test]
