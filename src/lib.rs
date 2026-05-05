@@ -350,18 +350,29 @@ fn validate_column_names(reader: &mut Reader<Box<dyn Read>>, validations: &Vec<C
     debug!("Actual Column Names: {:?}", headers);
 
     if expected_column_names != headers {
+        info!("");
+        info!("COLUMNS VALIDATION");
+        info!("--------------------------------------------------");
         if expected_column_names.len() != headers.len() {
-            info!("The number of columns in the CSV file doesn't match the validations:");
+            info!("[✖] The number of columns in the CSV file ({}) doesn't match the expected validations ({}):", headers.len(), expected_column_names.len());
             let expected_columns_set: HashSet<String> = expected_column_names.iter().cloned().collect();
             let headers_set: HashSet<String> = headers.iter().cloned().collect();
-            info!("These column names in the CSV file were not expected: {:?}", headers_set.difference(&expected_columns_set));
-            info!("These expected column names were missing in the CSV file: {:?}", expected_columns_set.difference(&headers_set));
+
+            let unexpected: Vec<_> = headers_set.difference(&expected_columns_set).collect();
+            if !unexpected.is_empty() {
+                info!("  - Unexpected columns in CSV: {:?}", unexpected);
+            }
+
+            let missing: Vec<_> = expected_columns_set.difference(&headers_set).collect();
+            if !missing.is_empty() {
+                info!("  - Missing expected columns: {:?}", missing);
+            }
         }
         else {
-            info!("The CSV file has the same number of columns than the validations but some names are different:");
-            for (expected_column, header) in zip(expected_column_names, headers) {
+            info!("[✖] The CSV file has the same number of columns but some names or order are different:");
+            for (i, (expected_column, header)) in expected_column_names.iter().zip(headers.iter()).enumerate() {
                 if expected_column != header {
-                    info!("{:?} != {:?}", expected_column, header);
+                    info!("  - Column {}: Expected {:?} but found {:?}", i + 1, expected_column, header);
                 }
             }
         }
@@ -510,13 +521,17 @@ impl CSVValidator {
         let mut rdr = get_reader_from(file_path, self.separator)?;
 
         // First validation: Ensure column names and order are exactly as expected
-        if validate_column_names(&mut rdr, &self.validations)? {
-            info!("Columns names and order are correct");
-        }
-        else {
+        if !validate_column_names(&mut rdr, &self.validations)? {
             error!("Expected columns != File columns. Cannot continue with rest of the validations");
+
+            info!("");
+            info!("VALIDATION RESULT");
+            info!("--------------------------------------------------");
+            info!("[✖] FAIL: File {} DOESN'T match all validations", file_path);
+            info!("");
             return Ok(false);
         }
+        info!("Columns names and order are correct");
 
         // Second validation: If column names match, check if also the values match the validations
         let mut validation_summaries_map = build_validation_summaries_map(&self.validations);
@@ -815,6 +830,18 @@ mod tests {
     #[test]
     fn init_logger() {
         SimpleLogger::new().init().unwrap();
+    }
+
+    #[test]
+    fn test_wrong_headers_same_count() {
+        let definition = String::from("
+            columns:
+              - name: First Column
+              - name: WRONG Second Column
+              - name: Third Column
+        ");
+        let validator = CSVValidator::from_string(&definition).unwrap();
+        assert!(!validator.validate("test/test_file.csv").unwrap());
     }
 
     #[test]
